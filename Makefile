@@ -1,4 +1,3 @@
-
 NAME    = scop.exe
 OBJ_DIR = obj
 GLAD_DIR = libs/glad
@@ -7,6 +6,9 @@ SRC = src/main.cpp \
       src/VAO/VAO.cpp \
       src/VBO/VBO.cpp \
       src/EBO/EBO.cpp \
+      src/Texture/Texture.cpp \
+      src/Camera/Camera.cpp \
+      src/libs/stb_impl.cpp \
       src/shaders/shaderClass.cpp
 
 OBJ = $(patsubst src/%.cpp,$(OBJ_DIR)/%.o,$(SRC))
@@ -16,10 +18,15 @@ GLAD_OBJ = $(OBJ_DIR)/gl.o
 GLAD_HEADER = $(GLAD_DIR)/include/glad/gl.h
 GLAD_KHR = $(GLAD_DIR)/include/KHR/khrplatform.h
 
+STB_DIR = libs/stb
+GLM_DIR = libs/glm
+
 CXX = g++
 CC  = gcc
 
-CXXFLAGS = -Wall -Wextra -Werror -std=c++17 -I$(GLAD_DIR)/include -Isrc
+
+
+CXXFLAGS = -Wall -Wextra -Werror -std=c++17 -I$(GLAD_DIR)/include -I$(STB_DIR) -I$(GLM_DIR) -Isrc
 CFLAGS   = -Wall -Wextra -Werror -I$(GLAD_DIR)/include
 LDFLAGS  = -lglfw3 -lopengl32 -lgdi32
 
