@@ -2,39 +2,61 @@
 #include <cmath>
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
-#include "glm/glm.hpp"
-#include "glm/gtc/matrix_transform.hpp"
-#include "glm/gtc/type_ptr.hpp"
 
 #include "VAO/VAO.hpp"
 #include "VBO/VBO.hpp"
 #include "EBO/EBO.hpp"
 #include "shaders/shaderClass.hpp"
 #include "Texture/Texture.hpp"
-#include "Camera/Camera.hpp"
+#include "Math/VEC/VEC3.hpp"
+#include "Math/MAT/MAT4.hpp"
 
 const unsigned int width = 800;
 const unsigned int height = 800;
 
 GLfloat vertices[] =
-{ //     COORDINATES     /        COLORS      /   TexCoord  //
-	-0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,	0.0f, 0.0f,
-	-0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	5.0f, 0.0f,
-	 0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	0.0f, 0.0f,
-	 0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,	5.0f, 0.0f,
-	 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	2.5f, 5.0f
-};
+	{//     COORDINATES     /        COLORS      /   TexCoord  //
+	 -0.5f, 0.0f, 0.5f, 0.83f, 0.70f, 0.44f, 0.0f, 0.0f,
+	 -0.5f, 0.0f, -0.5f, 0.83f, 0.70f, 0.44f, 5.0f, 0.0f,
+	 0.5f, 0.0f, -0.5f, 0.83f, 0.70f, 0.44f, 0.0f, 0.0f,
+	 0.5f, 0.0f, 0.5f, 0.83f, 0.70f, 0.44f, 5.0f, 0.0f,
+	 0.0f, 0.8f, 0.0f, 0.92f, 0.86f, 0.76f, 2.5f, 5.0f};
 
 // Indices for vertices order
 GLuint indices[] =
+	{
+		0, 1, 2,
+		0, 2, 3,
+		0, 1, 4,
+		1, 2, 4,
+		2, 3, 4,
+		3, 0, 4};
+
+void processInputs(GLFWwindow *window, Vec3 &objPos)
 {
-	0, 1, 2,
-	0, 2, 3,
-	0, 1, 4,
-	1, 2, 4,
-	2, 3, 4,
-	3, 0, 4
-};
+	float speed = 0.001f;
+
+	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+		speed = 0.05f;
+
+	// X : gauche / droite
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+		objPos.x += speed;
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+		objPos.x -= speed;
+
+	// Y : bas / haut
+	if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+		objPos.y += speed;
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+		objPos.y -= speed;
+
+	// Z : loin / proche (la caméra regarde vers -Z)
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+		objPos.z += speed;
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+		objPos.z -= speed;
+}
 
 int main()
 {
@@ -48,7 +70,6 @@ int main()
 	// Tell GLFW we are using the CORE profile
 	// So that means we only have the modern functions
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
 
 	GLFWwindow *window = glfwCreateWindow(800, 800, "Scop", NULL, NULL);
 	// Error check if the window fails to create
@@ -98,30 +119,33 @@ int main()
 
 	glEnable(GL_DEPTH_TEST);
 
-	Camera camera(width, height, glm::vec3(0.0f, 0.0f, 2.0f));
+	Vec3 objPos(0.0f, 0.0f, 0.0f);
+	float angle = 0.0f;
+
+	// View et projection : fixes, calculées une seule fois
+	Mat4 view = Mat4::lookAt(Vec3(0, 0, 2), Vec3(0, 0, 0), Vec3(0, 1, 0));
+	Mat4 proj = Mat4::perspective(Mat4::radians(45.0f), (float)width / height, 0.1f, 100.0f);
+	GLint camLoc = glGetUniformLocation(shaderProgram.ID, "camMatrix");
 
 	// Main while loop
 	while (!glfwWindowShouldClose(window))
 	{
-		// Specify the color of the background
 		glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
-		// Clean the back buffer and assign the new color to it
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		// Tell OpenGL which Shader Program we want to use
 		shaderProgram.Activate();
 
-		camera.Inputs(window);
-		camera.Matrix(45.0f, 0.1f, 100.0f, shaderProgram, "camMatrix");
+		processInputs(window, objPos);
+		//angle += 0.01f;
 
-		// Binds texture so that is appears in rendering
+		// Model : déplacement de l'objet + rotation sur lui-même
+		Mat4 model = Mat4::translate(objPos) * Mat4::rotateY(angle);
+		Mat4 mvp = proj * view * model;
+		glUniformMatrix4fv(camLoc, 1, GL_FALSE, mvp.m);
+
 		popCat.Bind();
-		// Bind the VAO so OpenGL knows to use it
 		VAO1.Bind();
-		// Draw primitives, number of indices, datatype of indices, index of indices
 		glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(int), GL_UNSIGNED_INT, 0);
-		// Swap the back buffer with the front buffer
 		glfwSwapBuffers(window);
-		// Take care of all GLFW events
 		glfwPollEvents();
 	}
 
